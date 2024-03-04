@@ -35,6 +35,9 @@ Route::group(['prefix'=>'admin'],function(){
             'index' => 'admin.categories.index',
             'create' => 'admin.categories.create',
             'store' => 'admin.categories.store',
+            'edit'=> 'admin.categories.edit',
+            'update'=> 'admin.categories.update',
+            'destroy'=> 'admin.categories.destroy'
         ]);
 
     });

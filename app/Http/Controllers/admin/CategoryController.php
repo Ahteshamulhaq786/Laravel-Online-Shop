@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\TempImage;
 use Illuminate\Support\Facades\Validator;
+use Intervention\Image\ImageManager;
 use Illuminate\Support\Facades\File;
 
 class CategoryController extends Controller
@@ -29,6 +30,7 @@ class CategoryController extends Controller
      */
     public function create()
     {
+        // phpinfo();
         return view('admin.categories.create');
     }
 
@@ -58,6 +60,13 @@ class CategoryController extends Controller
                 $sPath=public_path('uploads/temp').'/'.$temp_imag->name;
                 $dPath=public_path('uploads/category').'/'.$new_file_name;
                 File::copy($sPath,$dPath);
+
+                $dPath=public_path('uploads/category')."/thumbs/".$new_file_name;
+                $image = ImageManager::gd()->read($sPath);
+                $image->resize(450, 600);
+                $image->save($dPath);
+                $category->image = $new_file_name;
+                $category->save();
             }
 
             $request->session()->flash('success','Category created Successfully');
@@ -88,22 +97,90 @@ class CategoryController extends Controller
      */
     public function edit(Category $category)
     {
-        //
+        return view('admin.categories.edit',compact('category'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Category $category)
+    public function update(Request $request,$id)
     {
-        //
+        $category = Category::find($id);
+        if(is_null($category)){
+
+            $request->session()->flash('error','Category Not Found');
+
+            return response()->json([
+                'status'=>true,
+                'not_found'=>true,
+                'message'=>'Category Not Found',
+            ]);
+        }
+
+        $validator=Validator::make($request->all(),[
+            'name'=>'required',
+            'slug'=>'required|unique:categories,slug,'.$category->id,
+            'status'=>'required',
+        ]);
+
+        if($validator->passes()){
+
+            $category->name = $request->name;
+            $category->slug = $request->slug;
+            $category->status = $request->status;
+            $category->save();
+
+            if(!empty($request->image_id)){
+
+                if(!empty($category->image)){
+                    File::delete(public_path().'/uploads/category/thumbs/'.$category->image);
+                    File::delete(public_path().'/uploads/category/'.$category->image);
+                }
+
+                $temp_imag=TempImage::find($request->image_id);
+                $ext = last(explode('.',$temp_imag->name));
+                $new_file_name = $category->id.'.'.$ext;
+                $sPath=public_path('uploads/temp').'/'.$temp_imag->name;
+                $dPath=public_path('uploads/category').'/'.$new_file_name;
+                File::copy($sPath,$dPath);
+
+                $dPath=public_path('uploads/category')."/thumbs/".$new_file_name;
+                $image = ImageManager::gd()->read($sPath);
+                $image->resize(450, 600);
+                $image->save($dPath);
+                $category->image = $new_file_name;
+                $category->save();
+            }
+
+            $request->session()->flash('success','Category Updated Successfully');
+
+            return response()->json([
+                'status'=>true,
+                'message'=>'Category Updated Successfully',
+            ]);
+            
+        }else{
+            return response()->json([
+                'status'=>false,
+                'errors'=>$validator->errors(),
+            ]);
+        }
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Category $category)
+    public function destroy(Request $request,Category $category)
     {
-        //
+        if(!empty($category->image)){
+            File::delete(public_path().'/uploads/category/thumbs/'.$category->image);
+            File::delete(public_path().'/uploads/category/'.$category->image);
+        }
+        $category->delete();
+        $request->session()->flash('info','Category Deleted Successfully');
+        return response()->json([
+            'status'=>true,
+            'message'=>'Category Deleted Successfully',
+        ]);
     }
 }

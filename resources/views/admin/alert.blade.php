@@ -15,3 +15,12 @@
   </div>
 
   @endif
+
+  @if(Session::has('info'))
+
+  <div class="alert alert-info alert-dismissible">
+    <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+    <strong>Info!</strong> {{Session::get('info')}}
+  </div>
+
+  @endif
